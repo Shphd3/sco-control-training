@@ -7,6 +7,11 @@ description: Use this skill when controlling SenseCore SCO CLI resources and job
 
 Use this skill to operate `sco` pragmatically from shell templates and known command patterns. Prefer the embedded patterns below before reading references. Load reference files only when the user asks for a less common flag, a YAML example, or a precise command variant.
 
+## Task-specific references
+
+- Use [ACP distributed jobs](references/acp-distributed-cn.md) for multiple jobs, worker rendezvous, RDMA verification, and matched training measurements.
+- Use [AOSS storage](references/aoss-storage-cn.md) for ACP or CCI native mounts, S3 transfers, and AFS comparisons.
+
 ## Operating Rules
 
 - Treat query/inspect as the default first step: list resources, describe the target, then run mutating commands only when intent is explicit.
@@ -21,7 +26,6 @@ Use this skill to operate `sco` pragmatically from shell templates and known com
 1. Establish context:
    ```bash
    sco config profiles list
-   sco config list
    sco aec2 clusters list
    sco afs volume list
    sco ccr images list

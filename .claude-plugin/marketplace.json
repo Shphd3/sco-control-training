@@ -1,8 +1,8 @@
 {
-  "name": "sco-skill",
+  "name": "shphd-sco-control",
   "description": "SenseCore SCO CLI control skill for Claude Code",
   "owner": {
-    "name": "BinaryCheater"
+    "name": "Shphd3"
   },
   "plugins": [
     {
