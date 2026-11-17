@@ -10,16 +10,17 @@ SCO_AEC2            # AEC2 cluster name, or public when using public cluster fla
 CONTAINER_IMAGE_URL # fully qualified image URL
 STORAGE_MOUNT       # volume_id[:subdir]:container_path
 REMOTE_PROJECT_DIR  # project path inside the mounted storage
+SPEC                # worker spec from the cluster's list-workerspec output
 ```
 
 Common optional environment:
 
 ```bash
-SPEC="${SPEC:-<worker-spec>}"
+SCO_PROFILE="${SCO_PROFILE:-}"            # set this explicitly for each account
 WORKER_NODES="${WORKER_NODES:-1}"
 QUOTA_TYPE="${QUOTA_TYPE:-reserved}"   # reserved or spot
 PRIORITY="${PRIORITY:-normal}"         # normal, high, highest
-DRY_RUN="${DRY_RUN:-0}"
+DRY_RUN="${DRY_RUN:-1}"
 ```
 
 ## Task Families
@@ -60,25 +61,23 @@ add_export() {
 
 ## ACP Submission
 
-Build a multi-line remote command and pass it as `--command`. Quote values with `printf %q`; never interpolate untrusted values raw into the remote command.
-
-```bash
-sco acp jobs create \
-  --workspace-name="${SCO_WORKSPACE}" \
-  --aec2-name="${SCO_AEC2}" \
-  --job-name="${JOB_NAME}" \
-  --container-image-url="${CONTAINER_IMAGE_URL}" \
-  --training-framework=pytorch \
-  --worker-nodes="${WORKER_NODES}" \
-  --worker-spec="${SPEC}" \
-  --priority="${PRIORITY}" \
-  --quota-type="${QUOTA_TYPE}" \
-  --storage-mount="${STORAGE_MOUNT}" \
-  --command="${command}"
-```
+Use [acp_submit_template.sh](acp_submit_template.sh) to build the remote command with shell-quoted arguments and pass it as `--command`. The template passes `SCO_PROFILE` as the CLI's `--profile` when set. For multiple accounts, use a separate `sco.<account>.local.env` file for each profile. This filename pattern is ignored by Git.
 
 ## Dry Run
 
-Support `DRY_RUN=1` to print the exact remote command without calling `sco`. In controlled mode, prefer dry-run output and skip live submission.
+From a repository checkout, copy the example to an ignored local file and fill in the resource values for this account. Initialize credentials separately with `sco init`.
 
-See [acp_submit_template.sh](acp_submit_template.sh) for a compact sanitized shell skeleton.
+```bash
+cp skills/sco-control-training/references/sco.local.env.example ./sco.local.env
+```
+
+Preview from a subshell to keep the account's settings local to this command.
+
+```bash
+(
+  source ./sco.local.env
+  DRY_RUN=1 bash skills/sco-control-training/references/acp_submit_template.sh smoke
+)
+```
+
+The preview prints the full argument list without invoking `sco`. Check the profile, target resources and remote command. Set `DRY_RUN=0` on the template invocation only when submitting an authorized job.

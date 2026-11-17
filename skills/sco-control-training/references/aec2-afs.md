@@ -74,10 +74,12 @@ sco afs dir-quota delete -i "$VOLUME_ID" -d /project
 ```bash
 sco afs dir-acl list -i "$VOLUME_ID"
 sco afs dir-acl list -i "$VOLUME_ID" -d /project
-sco afs dir-acl create -i "$VOLUME_ID" -d /project -p rw -u all
-sco afs dir-acl create -i "$VOLUME_ID" -d /project -p r -u "$USER_ID"
-sco afs dir-acl create -i "$VOLUME_ID" -d /project -p rw -g "$GROUP_ID"
+sco --profile "$OWNER_PROFILE" afs dir-acl create -i "$VOLUME_ID" -d "$INPUT_DIR" -p r -u "$READER_USER_ID"
+sco --profile "$OWNER_PROFILE" afs dir-acl create -i "$VOLUME_ID" -d "$INPUT_DIR" -p r -g "$READER_GROUP_ID"
+sco --profile "$OWNER_PROFILE" afs dir-acl create -i "$VOLUME_ID" -d "$OUTPUT_DIR" -p rw -g "$WRITER_GROUP_ID"
 ```
+
+Use paths inside the AFS volume for `INPUT_DIR` and `OUTPUT_DIR`. Keep run outputs writable by their owner and grant write access to a named group if that group also manages the outputs. Check the workspace's AFS identity setting when relying on per-user permissions. When identity recognition is enabled, workload file operations are checked as the submitter. With it disabled, workloads access mounted AFS as root. Verify effective permissions under the recipient's own ACP identity. [SenseCore workspace settings](https://www.sensecore.cn/help/docs/cloud-foundation/compute/aec2/userGuide/workspaceManage)
 
 ACP storage mount format is `volume_id[:subdir]:container_path`, for example `<afs-volume-id>:/data`.
 

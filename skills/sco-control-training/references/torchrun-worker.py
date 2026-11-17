@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch one process per ACP worker using an operator-provided rendezvous file."""
+"""Launch GPU processes on each ACP worker using an operator-provided rendezvous file."""
 
 import argparse
 from ipaddress import ip_address
@@ -17,11 +17,15 @@ def main():
     parser.add_argument("--wait-seconds", type=int, default=300)
     parser.add_argument("--run-seconds", type=int, default=300)
     parser.add_argument("--port", type=int, default=29632)
+    parser.add_argument("--nproc-per-node", type=int, default=1, help="Training processes per worker (default: 1)")
     parser.add_argument("--pod-ip", help="Explicit worker Pod IP if the auto check is ambiguous")
     parser.add_argument("training", type=Path)
     args, training_args = parser.parse_known_args()
     if min(args.wait_seconds, args.run_seconds) <= 0 or not 1024 <= args.port <= 65535:
         parser.error("Timeouts must be positive and port must be in 1024–65535")
+
+    if args.nproc_per_node < 1:
+        parser.error("Processes per node must be positive")
 
     deadline = time.monotonic() + args.wait_seconds
     while not args.endpoints.is_file():
@@ -52,7 +56,7 @@ def main():
     env.update(NCCL_DEBUG="INFO", NCCL_DEBUG_SUBSYS="INIT,NET,GRAPH")
     command = [
         sys.executable, "-m", "torch.distributed.run",
-        f"--nnodes={len(addresses)}", "--nproc-per-node=1", "--max-restarts=0",
+        f"--nnodes={len(addresses)}", f"--nproc-per-node={args.nproc_per_node}", "--max-restarts=0",
         f"--node-rank={matches[0]}", f"--master-addr={addresses[0]}",
         f"--master-port={args.port}", str(args.training), *training_args,
     ]

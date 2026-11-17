@@ -1,6 +1,6 @@
 # 两个 ACP 作业组成四卡训练
 
-两个独立 ACP 各申请两副本、每副本一卡。每个 Worker 有自己的 Pod IP。四个 Worker 通过同一个 `MASTER_ADDR:MASTER_PORT` 加入同一训练组。任务号用于查询和管理任务，训练进程使用 Pod IP 与端口连接。
+这个示例使用两个独立 ACP，各申请两副本、每副本一卡。5090 每节点双卡使用 [RTX 5090 配方](rtx5090-training-cn.md)。每个 Worker 有自己的 Pod IP。四个 Worker 通过同一个 `MASTER_ADDR:MASTER_PORT` 加入同一训练组。任务号用于查询和管理任务，训练进程使用 Pod IP 与端口连接。
 
 ## 提交资源和分配 rank
 

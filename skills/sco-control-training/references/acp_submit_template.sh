@@ -10,13 +10,13 @@ set -euo pipefail
 : "${CONTAINER_IMAGE_URL:?set CONTAINER_IMAGE_URL}"
 : "${STORAGE_MOUNT:?set STORAGE_MOUNT, e.g. volume_id:/data}"
 : "${REMOTE_PROJECT_DIR:?set REMOTE_PROJECT_DIR}"
+: "${SPEC:?set SPEC to a worker spec from the target cluster}"
 
-SPEC="${SPEC:-<worker-spec>}"
 WORKER_NODES="${WORKER_NODES:-1}"
 QUOTA_TYPE="${QUOTA_TYPE:-reserved}" # reserved or spot
 PRIORITY="${PRIORITY:-normal}"
 TASK="${1:-${SCO_TASK:-smoke}}"
-DRY_RUN="${DRY_RUN:-0}"
+DRY_RUN="${DRY_RUN:-1}"
 TARGET_SCRIPT="${TARGET_SCRIPT:-}"
 ENTRY_ARG="${ENTRY_ARG:-}"
 JOB_NAME="${JOB_NAME:-}"
@@ -39,30 +39,30 @@ add_export() {
 configure_task() {
   case "${TASK}" in
     smoke)
-      set_target "example_smoke" "scripts/run_smoke.sh"
+      set_target "example-smoke" "scripts/run_smoke.sh"
       add_export WANDB "0"
       add_export TRAIN_STEPS "${TRAIN_STEPS:-1}"
       add_export SAVE_STEPS "${SAVE_STEPS:-1}"
       ;;
     pilot)
-      set_target "example_pilot" "scripts/run_train.sh"
+      set_target "example-pilot" "scripts/run_train.sh"
       add_export TRAIN_STEPS "${TRAIN_STEPS:-50000}"
       add_export SAVE_STEPS "${SAVE_STEPS:-10000}"
       add_export EVAL_STEPS "${EVAL_STEPS:-5000}"
       ;;
     full)
-      set_target "example_full" "scripts/run_train.sh"
+      set_target "example-full" "scripts/run_train.sh"
       add_export TRAIN_STEPS "${TRAIN_STEPS:-400000}"
       add_export SAVE_STEPS "${SAVE_STEPS:-10000}"
       add_export EVAL_STEPS "${EVAL_STEPS:-5000}"
       ;;
     diagnostics)
-      set_target "example_diagnostics" "scripts/run_diagnostics.sh"
+      set_target "example-diagnostics" "scripts/run_diagnostics.sh"
       add_export CKPT_NAMES "${CKPT_NAMES:-latest.pth}"
       add_export SAMPLE_COUNT "${SAMPLE_COUNT:-1024}"
       ;;
     *.sh | scripts/*)
-      set_target "example_$(basename "${TASK}" .sh)" "${TASK}"
+      set_target "example-$(basename "${TASK}" .sh)" "${TASK}"
       ;;
     *)
       echo "Unknown SCO task: ${TASK}" >&2
@@ -86,9 +86,9 @@ command=$(
     value="${item#*=}"
     printf 'export %s=%s\n' "${key}" "$(shell_quote "${value}")"
   done
-  printf 'echo "[SCO] TASK=%s"\n' "$(shell_quote "${TASK}")"
-  printf 'echo "[SCO] JOB_NAME=%s"\n' "$(shell_quote "${JOB_NAME}")"
-  printf 'echo "[SCO] TARGET_SCRIPT=%s"\n' "$(shell_quote "${TARGET_SCRIPT}")"
+  printf 'printf "%%s\\n" %s\n' "$(shell_quote "[SCO] TASK=${TASK}")"
+  printf 'printf "%%s\\n" %s\n' "$(shell_quote "[SCO] JOB_NAME=${JOB_NAME}")"
+  printf 'printf "%%s\\n" %s\n' "$(shell_quote "[SCO] TARGET_SCRIPT=${TARGET_SCRIPT}")"
   if [[ -n "${ENTRY_ARG}" ]]; then
     printf 'bash %s %s\n' "$(shell_quote "${TARGET_SCRIPT}")" "$(shell_quote "${ENTRY_ARG}")"
   else
@@ -96,21 +96,30 @@ command=$(
   fi
 )
 
+submit=(sco)
+if [[ -n "${SCO_PROFILE:-}" ]]; then
+  submit+=(--profile "${SCO_PROFILE}")
+fi
+submit+=(
+  acp jobs create
+  --workspace-name="${SCO_WORKSPACE}"
+  --aec2-name="${SCO_AEC2}"
+  --job-name="${JOB_NAME}"
+  --container-image-url="${CONTAINER_IMAGE_URL}"
+  --training-framework=pytorch
+  --worker-nodes="${WORKER_NODES}"
+  --worker-spec="${SPEC}"
+  --priority="${PRIORITY}"
+  --quota-type="${QUOTA_TYPE}"
+  --storage-mount="${STORAGE_MOUNT}"
+  --command="${command}"
+)
+
 if [[ "${DRY_RUN}" != "0" ]]; then
-  echo "[SCO dry-run] Command that would be submitted:"
-  printf '%s\n' "${command}"
+  printf '%s\n' '[SCO dry-run] Submission arguments:'
+  printf '%q ' "${submit[@]}"
+  printf '\n'
   exit 0
 fi
 
-sco acp jobs create \
-  --workspace-name="${SCO_WORKSPACE}" \
-  --aec2-name="${SCO_AEC2}" \
-  --job-name="${JOB_NAME}" \
-  --container-image-url="${CONTAINER_IMAGE_URL}" \
-  --training-framework=pytorch \
-  --worker-nodes="${WORKER_NODES}" \
-  --worker-spec="${SPEC}" \
-  --priority="${PRIORITY}" \
-  --quota-type="${QUOTA_TYPE}" \
-  --storage-mount="${STORAGE_MOUNT}" \
-  --command="${command}"
+"${submit[@]}"

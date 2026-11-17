@@ -5,7 +5,7 @@ CCI is best for long-running interactive/debug containers or services. Creation 
 ## Commands
 
 ```bash
-sco cci apps create "$APP" --workspace-name "$WORKSPACE" --config ./cci-app.yaml --ports 1002,1003
+sco cci apps create "$APP" --workspace-name "$WORKSPACE" --config ./cci-app.local.yaml
 sco cci apps list --workspace-name "$WORKSPACE"
 sco cci apps list --workspace-name "$WORKSPACE" --keyword "$USER_ID" --page-size 20
 sco cci apps list --workspace-name "$WORKSPACE" --aec2-name "$AEC2" --state RUNNING
@@ -23,10 +23,12 @@ If `apps list` fails with a workspace schema decode error while resolving `--wor
 
 ## Minimal YAML
 
+Replace the angle-bracket placeholders with values from the target workspace. Keep the filled file as `cci-app.local.yaml`.
+
 ```yaml
-display_name: my-app
+display_name: <app-display-name>
 resource_pool:
-  name: production-cluster
+  name: <aec2-cluster>
   available_zone: <zone>
 replicas: 1
 template:
@@ -46,7 +48,7 @@ template:
           mount_path: /data
           subdir: /
           zone: <zone>
-          display_name: shared-storage-volume
+          display_name: <afs-volume-display-name>
   init_containers: []
   resource_spec:
     name: <resource-spec>
@@ -62,5 +64,5 @@ scheduling:
 command:
   - sh
   - -c
-  - "cd /data/project && sleep inf"
+  - "cd '<mounted-project-path>' && sleep inf"
 ```
